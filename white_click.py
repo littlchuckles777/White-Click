@@ -35,7 +35,7 @@ class WhiteClicker:
 
     def __init__(
         self,
-        region_size: int = 50,
+        region_size: int = 20,
         poll_interval: float = 0.005,
         click_cooldown: float = 0.025,
         white_threshold: int = 240,
@@ -174,5 +174,5 @@ class WhiteClicker:
 
 
 if __name__ == "__main__":
-    clicker = WhiteClicker(region_size=50)
+    clicker = WhiteClicker(region_size=20)
     clicker.start()
