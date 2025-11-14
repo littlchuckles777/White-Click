@@ -30,3 +30,64 @@ within the capture region, the script immediately performs a left click.
 Release mouse button 5 to stop scanning.
 
 Press `Ctrl+C` in the terminal to exit the application.
+
+## Building an Executable in VS Code
+
+1. Install the **Python** and **Python Debugger** extensions in VS Code.
+2. Create and activate a virtual environment:
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows use: .venv\\Scripts\\activate
+   ```
+3. Install the runtime dependencies and build tools:
+   ```bash
+   pip install -r requirements.txt pyinstaller
+   ```
+4. Open the repository folder in VS Code and select the virtual environment as the
+   interpreter (`Ctrl+Shift+P` → **Python: Select Interpreter** → `.venv`).
+5. Build a standalone executable with PyInstaller:
+   ```bash
+   pyinstaller --onefile --name white_click white_click.py
+   ```
+   The resulting executable will be located in `dist/white_click` (or
+   `dist\white_click.exe` on Windows).
+
+## Building an Executable in Visual Studio
+
+1. Install Visual Studio 2022 with the **Python development** workload.
+2. Create a new **Python Application** solution and add the contents of this
+   repository to the project.
+3. Open the **Python Environments** window, create a new virtual environment for
+   the project, and install the requirements along with PyInstaller:
+   ```powershell
+   pip install -r requirements.txt pyinstaller
+   ```
+4. Open the **Command Prompt** (from the Visual Studio terminal or Windows
+   Terminal) with the project's virtual environment activated and run:
+   ```powershell
+   pyinstaller --onefile --name white_click white_click.py
+   ```
+5. Retrieve the generated executable from the `dist` directory inside the
+   project folder.
+
+## Obfuscating with PyArmor
+
+1. Install PyArmor in the same environment used for building:
+   ```bash
+   pip install pyarmor
+   ```
+2. Generate the obfuscated package while keeping the original entry point:
+   ```bash
+   pyarmor gen -O dist/obf white_click.py
+   ```
+3. Run the obfuscated script directly with Python:
+   ```bash
+   python dist/obf/white_click.py
+   ```
+   To distribute a standalone executable, run PyInstaller against the obfuscated
+   entry point:
+   ```bash
+   pyinstaller --onefile --name white_click_obf dist/obf/white_click.py
+   ```
+4. Share the executable from `dist/white_click_obf` (or `dist\white_click_obf.exe`
+   on Windows). The obfuscated sources are stored under `dist/obf`.
