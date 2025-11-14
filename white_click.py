@@ -45,6 +45,7 @@ class WhiteClicker:
 
         self._listener: Optional[mouse.Listener] = None
         self._active = False
+        self._active_event = threading.Event()
         self._stop_event = threading.Event()
         self._controller = mouse.Controller()
 
@@ -67,6 +68,10 @@ class WhiteClicker:
     def _on_click(self, _x: int, _y: int, button: mouse.Button, pressed: bool) -> None:
         if button == mouse.Button.x2:
             self._active = pressed
+            if pressed:
+                self._active_event.set()
+            else:
+                self._active_event.clear()
 
     def _capture_has_white(self, sct, region: CaptureRegion) -> bool:
         raw = sct.grab(
@@ -94,12 +99,22 @@ class WhiteClicker:
 
         try:
             while not self._stop_event.is_set():
+                if not self._active_event.wait(timeout=self._poll_interval):
+                    if not self._active and sct is not None:
+                        sct.close()
+                        sct = None
+                        region = None
+                    continue
+
+                if not self._active:
+                    continue
+
                 if sct is None:
                     sct = mss()
                     region = self._compute_center_region(sct, self._region_size)
 
                 try:
-                    if self._active and region and self._capture_has_white(sct, region):
+                    if region and self._capture_has_white(sct, region):
                         self._click()
                         if self._click_cooldown:
                             time.sleep(self._click_cooldown)
@@ -108,6 +123,7 @@ class WhiteClicker:
                     # Re-create the MSS session if the underlying handles were lost.
                     sct.close()
                     sct = None
+                    region = None
                     continue
 
                 time.sleep(self._poll_interval)
@@ -118,6 +134,10 @@ class WhiteClicker:
     def start(self) -> None:
         if self._listener is not None:
             raise RuntimeError("WhiteClicker is already running")
+
+        self._stop_event.clear()
+        self._active_event.clear()
+        self._active = False
 
         self._listener = mouse.Listener(on_click=self._on_click)
         self._listener.start()
@@ -132,7 +152,9 @@ class WhiteClicker:
             self.stop()
 
     def stop(self) -> None:
+        self._active = False
         self._stop_event.set()
+        self._active_event.set()
         if self._listener is not None:
             self._listener.stop()
             self._listener = None
