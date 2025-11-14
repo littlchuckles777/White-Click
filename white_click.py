@@ -1,10 +1,10 @@
-"""White pixel clicker application.
+"""White pixel activation application.
 
 This script monitors the center portion of the primary monitor for pure white
 pixels while the user holds mouse button 5 (typically the forward side button).
-When white pixels are detected within the watched region, the script performs a
-left mouse click. Low latency is prioritized by minimizing the amount of work
-performed per capture.
+When white pixels are detected within the watched region, the script emits a
+Left Alt keyboard input once per activation. Low latency is prioritized by
+minimizing the amount of work performed per capture.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from typing import Optional
 import numpy as np
 from mss import mss
 from mss.exception import ScreenShotError
-from pynput import mouse
+from pynput import keyboard, mouse
 
 
 @dataclass(frozen=True)
@@ -47,7 +47,8 @@ class WhiteClicker:
         self._active = False
         self._active_event = threading.Event()
         self._stop_event = threading.Event()
-        self._controller = mouse.Controller()
+        self._keyboard = keyboard.Controller()
+        self._triggered_this_hold = False
 
     @staticmethod
     def _compute_center_region(screen_capture: mss, region_size: int) -> CaptureRegion:
@@ -70,8 +71,11 @@ class WhiteClicker:
             self._active = pressed
             if pressed:
                 self._active_event.set()
+                print("Mouse button 5 detected as held.")
+                self._triggered_this_hold = False
             else:
                 self._active_event.clear()
+                self._triggered_this_hold = False
 
     def _capture_has_white(self, sct, region: CaptureRegion) -> bool:
         raw = sct.grab(
@@ -87,11 +91,16 @@ class WhiteClicker:
         frame = np.asarray(raw, dtype=np.uint8)
         # Check if any pixel is pure white (255, 255, 255) regardless of alpha.
         rgb = frame[:, :, :3]
-        return np.all(rgb == 255, axis=2).any()
+        has_white = np.all(rgb == 255, axis=2).any()
+        if has_white:
+            print("White detected in capture region.")
+        return has_white
 
-    def _click(self) -> None:
-        self._controller.press(mouse.Button.left)
-        self._controller.release(mouse.Button.left)
+    def _send_left_alt(self) -> None:
+        self._keyboard.press(keyboard.Key.alt_l)
+        time.sleep(0.01)
+        self._keyboard.release(keyboard.Key.alt_l)
+        print("Left Alt input sent.")
 
     def _loop(self) -> None:
         sct = None
@@ -115,10 +124,12 @@ class WhiteClicker:
 
                 try:
                     if region and self._capture_has_white(sct, region):
-                        self._click()
-                        if self._click_cooldown:
-                            time.sleep(self._click_cooldown)
-                        continue
+                        if not self._triggered_this_hold:
+                            self._send_left_alt()
+                            self._triggered_this_hold = True
+                            if self._click_cooldown:
+                                time.sleep(self._click_cooldown)
+                            continue
                 except (AttributeError, ScreenShotError):
                     # Re-create the MSS session if the underlying handles were lost.
                     sct.close()
