@@ -16,6 +16,7 @@ from typing import Optional
 
 import numpy as np
 from mss import mss
+from mss.exception import ScreenShotError
 from pynput import mouse
 
 
@@ -38,12 +39,10 @@ class WhiteClicker:
         poll_interval: float = 0.005,
         click_cooldown: float = 0.025,
     ) -> None:
-        self._sct = mss()
         self._region_size = max(1, region_size)
         self._poll_interval = max(0.001, poll_interval)
         self._click_cooldown = max(0.0, click_cooldown)
 
-        self._monitor_region = self._compute_center_region(self._sct, self._region_size)
         self._listener: Optional[mouse.Listener] = None
         self._active = False
         self._stop_event = threading.Event()
@@ -69,9 +68,8 @@ class WhiteClicker:
         if button == mouse.Button.x2:
             self._active = pressed
 
-    def _capture_has_white(self) -> bool:
-        region = self._monitor_region
-        raw = self._sct.grab(
+    def _capture_has_white(self, sct, region: CaptureRegion) -> bool:
+        raw = sct.grab(
             {
                 "left": region.left,
                 "top": region.top,
@@ -91,13 +89,31 @@ class WhiteClicker:
         self._controller.release(mouse.Button.left)
 
     def _loop(self) -> None:
-        while not self._stop_event.is_set():
-            if self._active and self._capture_has_white():
-                self._click()
-                if self._click_cooldown:
-                    time.sleep(self._click_cooldown)
-            else:
+        sct = None
+        region: Optional[CaptureRegion] = None
+
+        try:
+            while not self._stop_event.is_set():
+                if sct is None:
+                    sct = mss()
+                    region = self._compute_center_region(sct, self._region_size)
+
+                try:
+                    if self._active and region and self._capture_has_white(sct, region):
+                        self._click()
+                        if self._click_cooldown:
+                            time.sleep(self._click_cooldown)
+                        continue
+                except (AttributeError, ScreenShotError):
+                    # Re-create the MSS session if the underlying handles were lost.
+                    sct.close()
+                    sct = None
+                    continue
+
                 time.sleep(self._poll_interval)
+        finally:
+            if sct is not None:
+                sct.close()
 
     def start(self) -> None:
         if self._listener is not None:
