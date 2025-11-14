@@ -1,6 +1,6 @@
 # White-Click
 
-A low-latency utility that continuously monitors a 50×50 square in the center of
+A low-latency utility that continuously monitors a 20×20 square in the center of
 your primary monitor and performs a left click whenever pure white pixels are
 detected while you hold mouse button 5 (typically the forward side button).
 
@@ -30,6 +30,22 @@ within the capture region, the script immediately performs a left click.
 Release mouse button 5 to stop scanning.
 
 Press `Ctrl+C` in the terminal to exit the application.
+
+### Adjusting the capture region size
+
+The size of the monitored region is controlled by the `region_size` argument of
+`WhiteClicker` in `white_click.py`. By default, the application instantiates
+`WhiteClicker()` without arguments, which watches a 20×20 pixel square centered
+on the primary monitor. To use a different size, open `white_click.py` and adjust
+the value passed when `WhiteClicker` is created at the bottom of the file:
+
+```python
+if __name__ == "__main__":
+    WhiteClicker(region_size=40).start()
+```
+
+Replace `40` with the number of pixels you want for both the width and height of
+the square capture region.
 
 ## Building an Executable in VS Code
 
