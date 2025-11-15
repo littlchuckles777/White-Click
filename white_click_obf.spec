@@ -3,9 +3,14 @@
 
 from pathlib import Path
 
+# PyInstaller executes spec files via ``exec`` without defining ``__file__``.
+# Derive the spec path from ``__file__`` when available, otherwise fall back to
+# the current working directory so the build can be invoked from any location.
+spec_path = Path(globals().get("__file__", Path.cwd() / "white_click_obf.spec")).resolve()
+
 block_cipher = None
 
-project_root = Path(__file__).parent
+project_root = spec_path.parent
 obf_dir = project_root / "dist" / "obf"
 entry_script = obf_dir / "white_click.py"
 
