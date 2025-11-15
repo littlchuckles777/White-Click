@@ -101,9 +101,16 @@ the square capture region.
    python dist/obf/white_click.py
    ```
    To distribute a standalone executable, run PyInstaller against the obfuscated
-   entry point:
+   entry point. Because the protected sources hide their imports, explicitly
+   list the runtime dependencies so PyInstaller bundles them with the build:
    ```bash
-   pyinstaller --onefile --name white_click_obf dist/obf/white_click.py
+   pyinstaller \
+     --onefile \
+     --name white_click_obf \
+     --hidden-import numpy \
+     --hidden-import mss \
+     --hidden-import pynput \
+     dist/obf/white_click.py
    ```
 4. Share the executable from `dist/white_click_obf` (or `dist\white_click_obf.exe`
    on Windows). The obfuscated sources are stored under `dist/obf`.
