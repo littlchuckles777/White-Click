@@ -7,8 +7,6 @@ a Left Alt keyboard input once per activation. Low latency is prioritized by
 minimizing the amount of work performed per capture.
 """
 
-from __future__ import annotations
-
 import threading
 import time
 from dataclasses import dataclass
