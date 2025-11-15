@@ -3,7 +3,7 @@
 This script monitors the center portion of the primary monitor for near-white
 pixels while the user holds mouse button 5 (typically the forward side button).
 When qualifying pixels are detected within the watched region, the script emits
-a Left Alt keyboard input once per activation. Low latency is prioritized by
+an `x` keyboard input once per activation. Low latency is prioritized by
 minimizing the amount of work performed per capture.
 """
 
@@ -96,11 +96,11 @@ class WhiteClicker:
             print("Near-white detected in capture region.")
         return has_white
 
-    def _send_left_alt(self) -> None:
-        self._keyboard.press(keyboard.Key.alt_l)
+    def _send_x_key(self) -> None:
+        self._keyboard.press("x")
         time.sleep(0.01)
-        self._keyboard.release(keyboard.Key.alt_l)
-        print("Left Alt input sent.")
+        self._keyboard.release("x")
+        print("'x' key input sent.")
 
     def _loop(self) -> None:
         sct = None
@@ -125,7 +125,7 @@ class WhiteClicker:
                 try:
                     if region and self._capture_has_white(sct, region):
                         if not self._triggered_this_hold:
-                            self._send_left_alt()
+                            self._send_x_key()
                             self._triggered_this_hold = True
                             if self._click_cooldown:
                                 time.sleep(self._click_cooldown)
