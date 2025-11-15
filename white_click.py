@@ -3,10 +3,11 @@
 This script monitors the center portion of the primary monitor for near-white
 pixels while the user holds mouse button 5 (typically the forward side button).
 When qualifying pixels are detected within the watched region, the script emits
-a Left Alt keyboard input once per activation. Low latency is prioritized by
+an `x` keyboard input once per activation. Low latency is prioritized by
 minimizing the amount of work performed per capture.
 """
 
+import argparse
 import threading
 import time
 from dataclasses import dataclass
@@ -37,6 +38,8 @@ class WhiteClicker:
         poll_interval: float = 0.005,
         click_cooldown: float = 0.025,
         white_threshold: int = 240,
+        debug: bool = False,
+        debug_log_interval: float = 0.25,
     ) -> None:
         self._region_size = max(1, region_size)
         self._poll_interval = max(0.001, poll_interval)
@@ -49,6 +52,9 @@ class WhiteClicker:
         self._keyboard = keyboard.Controller()
         self._triggered_this_hold = False
         self._white_threshold = max(0, min(255, white_threshold))
+        self._debug = debug
+        self._debug_log_interval = max(0.05, debug_log_interval)
+        self._last_debug_log = 0.0
 
     @staticmethod
     def _compute_center_region(screen_capture: mss, region_size: int) -> CaptureRegion:
@@ -91,16 +97,33 @@ class WhiteClicker:
         frame = np.asarray(raw, dtype=np.uint8)
         # Check if any pixel is sufficiently close to white in all channels.
         rgb = frame[:, :, :3]
-        has_white = np.all(rgb >= self._white_threshold, axis=2).any()
+        # Collapse each pixel to the minimum of its RGB components, which
+        # represents the "all channels" brightness of that pixel. White pixels
+        # have high minimums because every channel is bright.
+        min_channels = rgb.min(axis=2)
+        brightest_pixel = int(min_channels.max())
+        has_white = brightest_pixel >= self._white_threshold
         if has_white:
-            print("Near-white detected in capture region.")
+            print(
+                "Near-white detected in capture region (brightness"
+                f" {brightest_pixel}/255)."
+            )
+        elif self._debug:
+            now = time.monotonic()
+            if now - self._last_debug_log >= self._debug_log_interval:
+                print(
+                    "Brightest pixel in capture region is"
+                    f" {brightest_pixel}/255 (threshold"
+                    f" {self._white_threshold})."
+                )
+                self._last_debug_log = now
         return has_white
 
-    def _send_left_alt(self) -> None:
-        self._keyboard.press(keyboard.Key.alt_l)
+    def _send_x_key(self) -> None:
+        self._keyboard.press("x")
         time.sleep(0.01)
-        self._keyboard.release(keyboard.Key.alt_l)
-        print("Left Alt input sent.")
+        self._keyboard.release("x")
+        print("'x' key input sent.")
 
     def _loop(self) -> None:
         sct = None
@@ -125,7 +148,7 @@ class WhiteClicker:
                 try:
                     if region and self._capture_has_white(sct, region):
                         if not self._triggered_this_hold:
-                            self._send_left_alt()
+                            self._send_x_key()
                             self._triggered_this_hold = True
                             if self._click_cooldown:
                                 time.sleep(self._click_cooldown)
@@ -171,6 +194,59 @@ class WhiteClicker:
             self._listener = None
 
 
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Monitor the center of the screen for white pixels and emit 'x'."
+    )
+    parser.add_argument(
+        "--region-size",
+        type=int,
+        default=20,
+        help="Width/height in pixels of the centered capture square (default: 20).",
+    )
+    parser.add_argument(
+        "--threshold",
+        type=int,
+        default=240,
+        help=(
+            "Minimum brightness (0-255) that all RGB channels must meet for a pixel"
+            " to be considered white (default: 240)."
+        ),
+    )
+    parser.add_argument(
+        "--poll-interval",
+        type=float,
+        default=0.005,
+        help="Seconds between capture attempts while scanning (default: 0.005).",
+    )
+    parser.add_argument(
+        "--cooldown",
+        type=float,
+        default=0.025,
+        help="Seconds to wait after sending 'x' before scanning resumes (default: 0.025).",
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Log the brightest pixel level in the capture region for calibration.",
+    )
+    parser.add_argument(
+        "--debug-interval",
+        type=float,
+        default=0.25,
+        help="Seconds between debug brightness logs (default: 0.25).",
+    )
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    clicker = WhiteClicker(region_size=20)
+    args = _parse_args()
+    clicker = WhiteClicker(
+        region_size=args.region_size,
+        poll_interval=args.poll_interval,
+        click_cooldown=args.cooldown,
+        white_threshold=args.threshold,
+        debug=args.debug,
+        debug_log_interval=args.debug_interval,
+    )
     clicker.start()
