@@ -27,26 +27,39 @@ python white_click.py
 
 Hold mouse button 5 to enable scanning. When pure white pixels are detected
 within the capture region, the script immediately emits an `x` keypress to the
-currently focused window.
-Release mouse button 5 to stop scanning.
+currently focused window. Release mouse button 5 to stop scanning.
+
+Use the optional command-line switches to tune the capture behavior without
+editing the source code:
+
+```bash
+python white_click.py --region-size 30 --threshold 225 --debug
+```
+
+- `--region-size`: width/height of the centered capture square in pixels.
+- `--threshold`: minimum brightness (0-255) that all RGB channels must reach for
+  a pixel to count as “white”. Lower this value if the target never triggers.
+- `--poll-interval`: delay between capture attempts while scanning.
+- `--cooldown`: pause after emitting `x` before scanning resumes.
+- `--debug`: logs the brightest pixel detected in the capture region so you can
+  calibrate the threshold.
 
 Press `Ctrl+C` in the terminal to exit the application.
 
-### Adjusting the capture region size
+### Calibrating the white detection threshold
 
-The size of the monitored region is controlled by the `region_size` argument of
-`WhiteClicker` in `white_click.py`. By default, the application instantiates
-`WhiteClicker()` without arguments, which watches a 20×20 pixel square centered
-on the primary monitor. To use a different size, open `white_click.py` and adjust
-the value passed when `WhiteClicker` is created at the bottom of the file:
+Some games and applications add post-processing that keeps the RGB components
+below pure white even when the screen “looks” white. Run the script with
+`--debug` to view the brightest pixel level (measured as the lowest RGB channel
+per pixel) observed in the 20×20 capture region. For example:
 
-```python
-if __name__ == "__main__":
-    WhiteClicker(region_size=40).start()
+```bash
+python white_click.py --debug
 ```
 
-Replace `40` with the number of pixels you want for both the width and height of
-the square capture region.
+If the log shows values such as `Brightest pixel ... 213/255 (threshold 240)`
+while you expect a trigger, restart the script with a lower threshold that still
+avoids false positives, e.g. `python white_click.py --threshold 215`.
 
 ## Building an Executable in VS Code
 
@@ -86,6 +99,13 @@ the square capture region.
    ```
 5. Retrieve the generated executable from the `dist` directory inside the
    project folder.
+
+To debug the live capture behavior inside Visual Studio, open the project
+properties (**Project** → *project name* Properties → **Debug**) and add any of
+the script arguments (for example `--debug --threshold 220`) to the **Script
+arguments** field. Starting the debugger (`F5`) will then launch the script with
+those options so you can watch the brightness logs in the Visual Studio
+Terminal.
 
 ## Obfuscating with PyArmor
 
