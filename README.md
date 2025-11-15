@@ -1,7 +1,7 @@
 # White-Click
 
 A low-latency utility that continuously monitors a 20×20 square in the center of
-your primary monitor and performs a left click whenever pure white pixels are
+your primary monitor and sends an `x` keypress whenever pure white pixels are
 detected while you hold mouse button 5 (typically the forward side button).
 
 ## Requirements
@@ -26,7 +26,8 @@ python white_click.py
 ```
 
 Hold mouse button 5 to enable scanning. When pure white pixels are detected
-within the capture region, the script immediately performs a left click.
+within the capture region, the script immediately emits an `x` keypress to the
+currently focused window.
 Release mouse button 5 to stop scanning.
 
 Press `Ctrl+C` in the terminal to exit the application.
